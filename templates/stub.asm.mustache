@@ -3,37 +3,23 @@
 
 _save_registers:
     push rdi
-    push rsi
-    push rdx
     push rcx
-    push rax
 {{#sections}}
-_mprotect{{{name}}}:
-    mov rdi, {{{page_start}}}
-    mov rsi, {{{psize}}}
-    mov rdx, 0x7 ; rwx
-    mov rax, 0x02
-    shl rax, 24
-    or rax, 74 ; mprotect
-    syscall
     mov rdi, {{{vaddr}}}
     mov rcx, rdi
     add rcx, {{{vsize}}}
-xor_loop{{{name}}}:
+_xor_loop{{{name}}}:
     xor byte ptr [rdi], {{{xor_key}}}
     inc rdi
     cmp rdi, rcx
-    jl xor_loop{{{name}}}
+    jl _xor_loop{{{name}}}
 {{/sections}}
+_restore_original_instructions:
+    mov rdi, {{{entry_point}}}
+    mov rcx, {{{entry_point_bytes}}}
+    mov [rdi], rcx
 _restore_registers:
-    pop rax
     pop rcx
-    pop rdx
-    pop rsi
     pop rdi
-original_instructions:
-{{#original_instructions}}
-    {{{opcode}}}
-{{/original_instructions}}
-jmp_back:
-    jmp {{{jmp_back}}}
+_jmp_back:
+    jmp {{{entry_point}}}

