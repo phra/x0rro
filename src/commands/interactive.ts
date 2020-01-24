@@ -5,6 +5,7 @@ import { R2Pipe } from 'r2pipe-promise'
 
 import { x0rro } from '../core'
 import { Options, Techniques, Section } from '../models'
+import { print_banner } from '../utils/banner'
 
 export default class Interactive extends Command {
   static description = 'Encrypt binary using code cave technique'
@@ -24,6 +25,7 @@ export default class Interactive extends Command {
   ]
 
   async run(): Promise<void> {
+    print_banner()
     const { args, flags } = this.parse(Interactive)
     const r2 = await R2Pipe.open(args.file)
     const sections = await r2.cmdj('iSj') as Section[]

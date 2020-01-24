@@ -14,6 +14,7 @@ export function print_banner(): void {
  ▀       ▀  ▀▀▀▀▀▀▀▀▀   ▀         ▀  ▀         ▀  ▀▀▀▀▀▀▀▀▀▀▀ `
 
   console.log(BANNER)
+  print_radare2_version()
 }
 
 export function print_radare2_version(): void {

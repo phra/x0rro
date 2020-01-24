@@ -3,6 +3,7 @@ import { Command, flags } from '@oclif/command'
 
 import { x0rro } from '../core'
 import { Options, Techniques } from '../models'
+import { print_banner } from '../utils/banner'
 
 export default class Cave extends Command {
   static description = 'Encrypt binary using code cave technique'
@@ -34,6 +35,7 @@ export default class Cave extends Command {
 
 
   async run(): Promise<void> {
+    print_banner()
     const { args, flags } = this.parse(Cave)
 
     const opts: Options = {
