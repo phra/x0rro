@@ -115,7 +115,7 @@ async function create_stub(
   entry_point_bytes: string,
   opts: Options,
 ): Promise<number> {
-  const template_name = opts.technique === Techniques.CODE_CAVE ? 'templates/stub.mprotect.asm.mustache' : 'templates/stub.asm.mustache'
+  const template_name = opts.technique === Techniques.CODE_CAVE ? 'templates/stub.mprotect.asm' : 'templates/stub.asm'
   const template = fs.readFileSync(template_name, { encoding: 'utf-8' })
   const data = {
     sections,
