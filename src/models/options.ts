@@ -1,5 +1,7 @@
+import { Techniques } from './techniques'
+
 export interface Options {
-    use_code_cave: boolean;
-    xor_key: number;
-    xor_sections: string[],
+    technique: Techniques
+    xor_key: number
+    sections: string[]
 }

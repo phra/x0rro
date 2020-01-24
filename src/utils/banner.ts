@@ -1,3 +1,5 @@
+import { execFileSync } from 'child_process'
+
 export function print_banner(): void {
   const BANNER = ` ▄       ▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄▄▄
 ▐░▌     ▐░▌▐░░░░░░░░░▌ ▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌
@@ -12,4 +14,8 @@ export function print_banner(): void {
  ▀       ▀  ▀▀▀▀▀▀▀▀▀   ▀         ▀  ▀         ▀  ▀▀▀▀▀▀▀▀▀▀▀ `
 
   console.log(BANNER)
+}
+
+export function print_radare2_version(): void {
+  console.log(execFileSync('r2', ['-v'], { encoding: 'utf-8' }))
 }

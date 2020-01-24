@@ -2,8 +2,8 @@
 import { Command, flags } from '@oclif/command'
 import { execFileSync } from 'child_process'
 
-import { x0rro } from '../core/x0rro'
-import { Options } from '../models'
+import { x0rro } from '../core'
+import { Options, Techniques } from '../models'
 
 export default class Section extends Command {
   static description = 'Encrypt binary using code cave technique'
@@ -15,12 +15,12 @@ export default class Section extends Command {
   static flags = {
     xor: flags.string({
       char: 'x',
-      description: 'xor key to use in hexadecimal (default: 0xf)',
+      description: 'xor key to use in hexadecimal',
       default: '0xf',
     }),
     sections: flags.string({
       char: 's',
-      description: 'sections to xor separated by comma (default: __text)',
+      description: 'sections to xor separated by comma',
       default: '__text',
     }),
     help: flags.help({
@@ -40,9 +40,9 @@ export default class Section extends Command {
     const { args, flags } = this.parse(Section)
 
     const opts: Options = {
-      use_code_cave: false,
+      technique: Techniques.ADD_SECTION,
       xor_key: parseInt(flags.xor, 16),
-      xor_sections: flags.sections.split(','),
+      sections: flags.sections.split(','),
     }
 
     await x0rro(args.file, opts)

@@ -1,4 +1,4 @@
 export interface CodeCave {
-  addr: string;
-  length: number;
+  addr: string
+  length: number
 }

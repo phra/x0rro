@@ -8,6 +8,7 @@ import {
   Section,
   EnrichedSection,
   Options,
+  Techniques,
 } from '../models'
 
 async function find_entry_point(r2: R2Pipe): Promise<string> {
@@ -96,14 +97,14 @@ async function xor_sections(r2: R2Pipe, sections: Section[], key: number): Promi
     console.log(await r2.cmd(`?E xoring ${s.name}`))
     console.log('before xor:')
     await r2.cmd(`s ${s.vaddr}`)
-    console.log(await r2.cmd(`pd 5`))
+    console.log(await r2.cmd(`px 32`))
     const values = await r2.cmdj(`pxj ${s.vsize}`) as number[]
     const new_values = values.map(value => (value ^ key).toString(16).padStart(2, '0')).join('')
     fs.writeFileSync('generated/xored', new_values)
     await r2.cmd(`wxf generated/xored`)
     console.log('after xor:')
     await r2.cmd(`s ${s.vaddr}`)
-    console.log(await r2.cmd(`pd 5`))
+    console.log(await r2.cmd(`px 32`))
   }
 }
 
@@ -114,7 +115,7 @@ async function create_stub(
   entry_point_bytes: string,
   opts: Options,
 ): Promise<number> {
-  const template_name = opts.use_code_cave ? 'templates/stub.mprotect.asm.mustache' : 'templates/stub.asm.mustache'
+  const template_name = opts.technique === Techniques.CODE_CAVE ? 'templates/stub.mprotect.asm.mustache' : 'templates/stub.asm.mustache'
   const template = fs.readFileSync(template_name, { encoding: 'utf-8' })
   const data = {
     sections,
@@ -197,7 +198,7 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
     file = save_backup(file)
     let r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
     console.log(await r2.cmd(`?E Processing ${file}`))
-    if (!opts.use_code_cave) {
+    if (opts.technique === Techniques.ADD_SECTION) {
       await make_segment_rwx(r2, file)
       await add_section(r2, file)
       await r2.quit()
@@ -206,9 +207,9 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
 
     const entry_point = await find_entry_point(r2)
     const entry_point_bytes = await find_entry_point_bytes(r2)
-    const sections = await find_sections(r2, opts.xor_sections)
+    const sections = await find_sections(r2, opts.sections)
     const stub_length = await create_stub(r2, sections, entry_point, entry_point_bytes, opts)
-    const code_cave = await (opts.use_code_cave ? find_code_cave(r2, sections, stub_length) : find_shellcode_section(r2))
+    const code_cave = await (opts.technique === Techniques.CODE_CAVE ? find_code_cave(r2, sections, stub_length) : find_shellcode_section(r2))
     await xor_sections(r2, sections, opts.xor_key)
     await patch_entry_point(r2, entry_point, code_cave)
     await patch_code_cave(r2, code_cave, stub_length)
