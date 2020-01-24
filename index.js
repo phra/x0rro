@@ -1,3 +1,7 @@
+#!/usr/bin/env node
+
+'use strict'
+
 const r2promise = require('r2pipe-promise')
 const fs = require('fs')
 const mustache = require('mustache')
@@ -5,44 +9,87 @@ const execFileSync = require('child_process').execFileSync
 
 const XOR_KEY = 0xf
 
+const BANNER = ` ▄       ▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄▄▄ 
+▐░▌     ▐░▌▐░░░░░░░░░▌ ▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌
+ ▐░▌   ▐░▌▐░█░█▀▀▀▀▀█░▌▐░█▀▀▀▀▀▀▀█░▌▐░█▀▀▀▀▀▀▀█░▌▐░█▀▀▀▀▀▀▀█░▌
+  ▐░▌ ▐░▌ ▐░▌▐░▌    ▐░▌▐░▌       ▐░▌▐░▌       ▐░▌▐░▌       ▐░▌
+   ▐░▐░▌  ▐░▌ ▐░▌   ▐░▌▐░█▄▄▄▄▄▄▄█░▌▐░█▄▄▄▄▄▄▄█░▌▐░▌       ▐░▌
+    ▐░▌   ▐░▌  ▐░▌  ▐░▌▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌▐░▌       ▐░▌
+   ▐░▌░▌  ▐░▌   ▐░▌ ▐░▌▐░█▀▀▀▀█░█▀▀ ▐░█▀▀▀▀█░█▀▀ ▐░▌       ▐░▌
+  ▐░▌ ▐░▌ ▐░▌    ▐░▌▐░▌▐░▌     ▐░▌  ▐░▌     ▐░▌  ▐░▌       ▐░▌
+ ▐░▌   ▐░▌▐░█▄▄▄▄▄█░█░▌▐░▌      ▐░▌ ▐░▌      ▐░▌ ▐░█▄▄▄▄▄▄▄█░▌
+▐░▌     ▐░▌▐░░░░░░░░░▌ ▐░▌       ▐░▌▐░▌       ▐░▌▐░░░░░░░░░░░▌
+ ▀       ▀  ▀▀▀▀▀▀▀▀▀   ▀         ▀  ▀         ▀  ▀▀▀▀▀▀▀▀▀▀▀ `
+
 async function find_entry_point(r2) {
-  return await r2.cmd('s')
+  return (await r2.cmd('s')).trim()
 }
 
 async function find_entry_point_bytes(r2) {
   return (await r2.cmd('pxq 8')).split(' ')[2] // TODO: x86 bits
 }
 
-async function find_code_cave(r2, sections_to_xor) {
-  console.log(await r2.cmd(`?E Searching for code caves`))
-  const length = 100
-  const res = (await r2.cmd(`/x ${'00'.repeat(length)}`)).split('\n')
-  if (res.length < 2) {
-    throw new Error(`Could not find a code cave of length ${length}`)
+async function calculate_length_code_cave(r2, code_cave) {
+  await r2.cmd(`s ${code_cave}`)
+  let length = 0;
+  while (!(await r2.cmd(`pr 1`))) {
+    length++
+    await r2.cmd(`s+ 1`)
   }
 
-  const executable_sections = (await r2.cmdj('iSj')).filter(x => x.perm === '-r-x')
+  return length
+}
+
+function align_to_boundary_16_upper(addr) {
+  return '0x' + ((BigInt(addr) & 0xfffffffffffffff0n) + 16n).toString(16)
+}
+
+function align_to_boundary_16_lower(addr) {
+  return '0x' + (BigInt(addr) & 0xfffffffffffffff0n).toString(16)
+}
+
+async function find_code_cave(r2, sections_to_xor, stub_length) {
+  console.log(await r2.cmd(`?E Searching for code caves`))
+  const res = (await r2.cmd(`/x ${'00'.repeat(stub_length)}`)).split('\n')
+  if (res.stub_length < 2) {
+    throw new Error(`Could not find a code cave of length ${stub_length}`)
+  }
+
+  const executable_sections = (await r2.cmdj('iSj')).filter(x => x.perm.includes('x'))
   const code_caves = res
     .map(x => x.split(' ')[0]) // last is empty line
     .filter(x => x)
+    .map(x => align_to_boundary_16_upper(x))
     .filter(code_cave => {
-      if (code_cave && executable_sections.some(x => x.vaddr <= parseInt(code_cave, 16) && (x.vaddr + x.vsize) > parseInt(code_cave, 16))) {
-        console.log(`POTENTIAL CODE CAVE => ${code_cave}`)
+      if (executable_sections.some(x => x.vaddr <= parseInt(code_cave, 16) && (x.vaddr + x.vsize) > parseInt(code_cave, 16))) {
         return code_cave
       }
     })
 
-  if (!code_caves.length) {
-    throw new Error(`Could not find an executable code cave of length ${length}`)
+  const code_caves_with_length = []
+
+  for (const x of code_caves) {
+    code_caves_with_length.push({
+      addr: x,
+      length: await calculate_length_code_cave(r2, x),
+    })
   }
 
-  const valid_code_caves = code_caves.filter(code_cave => {
+  const code_caves_with_length_sorted = code_caves_with_length.sort((x, y) => x.length - y.length).reverse()
+
+  if (!code_caves_with_length_sorted.length) {
+    throw new Error(`Could not find an executable code cave of length ${stub_length}`)
+  }
+
+  const valid_code_caves = code_caves_with_length_sorted.filter(code_cave => {
     return !sections_to_xor.some(x => x.vaddr <= parseInt(code_cave, 16) && (x.vaddr + x.vsize) > parseInt(code_cave, 16))
   })
 
   if (!valid_code_caves.length) {
-    throw new Error(`Could not find an executable code cave outside the sections to xor of length ${length}`)
+    throw new Error(`Could not find an executable code cave outside the sections to xor of length ${stub_length}`)
   }
+
+  console.log(`CHOOSEN CODE CAVE => ${valid_code_caves[0].addr} [${valid_code_caves[0].length} bytes]`)
 
   return valid_code_caves[0]
 }
@@ -63,8 +110,9 @@ async function xor_sections(r2, sections, key = XOR_KEY) {
   }
 }
 
-function create_stub(sections, entry_point, entry_point_bytes, xor_key = XOR_KEY) {
-  const template = fs.readFileSync('templates/stub.asm.mustache', { encoding: 'utf-8' })
+async function create_stub(r2, sections, entry_point, entry_point_bytes, opts, xor_key = XOR_KEY) {
+  const template_name = opts.use_code_cave ? 'templates/stub.mprotect.asm.mustache' : 'templates/stub.asm.mustache'
+  const template = fs.readFileSync(template_name, { encoding: 'utf-8' })
   const data = {
     sections,
     entry_point,
@@ -74,6 +122,8 @@ function create_stub(sections, entry_point, entry_point_bytes, xor_key = XOR_KEY
 
   const instance = mustache.render(template, data)
   fs.writeFileSync('generated/stub.asm', instance)
+  await r2.cmd('s+ 128') // use far jmp
+  return (await r2.cmd('waF* generated/stub.asm')).split(' ')[1].trim().length / 2
 }
 
 function get_page_start(addr) {
@@ -83,8 +133,8 @@ function get_page_start(addr) {
 async function find_sections(r2) {
   const WHITELIST = [
     //'__TEXT.__text',
-    //'__TEXT.__cstring',
-    '__DATA.__data'
+    '__TEXT.__cstring',
+    //'__DATA.__data'
   ]
 
   const sections = (await r2.cmdj('iSj'))
@@ -102,53 +152,82 @@ async function patch_entry_point(r2, entry_point, code_cave) {
   console.log(await r2.cmd(`?E Patching entry point`))
   await r2.cmd(`s ${entry_point}`)
   console.log(`original entry point:\n${await r2.cmd('pd 5')}`)
-  await r2.cmd(`"wa jmp ${code_cave}"`)
+  await r2.cmd(`"wa jmp ${code_cave.addr}"`)
   console.log(`new entry point:\n${await r2.cmd('pd 5')}`)
 }
 
-async function patch_code_cave(r2, code_cave) {
+async function patch_code_cave(r2, code_cave, stub_length) {
   console.log(await r2.cmd(`?E Writing stub`))
-  await r2.cmd(`s ${code_cave}`)
+  console.log(await r2.cmd(`s ${code_cave.addr}`))
   console.log(`code cave:\n${await r2.cmd('pd 5')}`)
-  await r2.cmd(`waf generated/stub.asm`)
-  console.log(`written stub:\n${await r2.cmd('pd 28')}`)
+  console.log(await r2.cmd(`waf generated/stub.asm`))
+  if (stub_length > code_cave.length) {
+    throw new Error(`The stub doesn't fit. Try to reduce section to encrypt.`)
+  }
+
+  console.log(`written stub [${stub_length} bytes]:`)
+  console.log(await r2.cmd(`pD ${stub_length}`))
 }
 
-async function remove_pie(r2, file) {
-  console.log(await r2.cmd(`?E Disabling ASLR & PIE - ${file}`))
-  console.log(execFileSync('python',  ['deps/disable_aslr/disable_aslr.py', file], { encoding: 'utf-8' }))
+async function add_section(r2, file, section_name = '__shellcode') {
+  console.log(await r2.cmd(`?E Adding ${section_name} - ${file}`))
+  console.log(execFileSync('python3',  ['scripts/add-section.py', file, section_name], { encoding: 'utf-8' }))
 }
 
-function make_rwx_and_add_section(file) {
-  //console.log(await r2.cmd(`?E Making all rwx, adding new section and disabling PIE - ${file}`))
-  console.log(execFileSync('python3',  ['scripts/make-all-rwx-and-add-section.py', file], { encoding: 'utf-8' }))
+async function make_segment_rwx(r2, file, segments = []) {
+  console.log(await r2.cmd(`?E Making segments rwx: ${segments.join(' ') || 'all'} - ${file}`))
+  console.log(execFileSync('python3',  ['scripts/make-segment-rwx.py', file, segments.join(' ')], { encoding: 'utf-8' }))
+}
+
+async function disable_pie(r2, file) {
+  console.log(await r2.cmd(`?E Disabling PIE - ${file}`))
+  console.log(execFileSync('python3',  ['scripts/disable-pie.py', file], { encoding: 'utf-8' }))
+}
+
+function print_radare2_version() {
+  console.log(execFileSync('r2',  ['-v'], { encoding: 'utf-8' }))
 }
 
 async function find_shellcode_section(r2) {
-  const shellcode_section = (await r2.cmdj('iSj')).find(x => x.name.includes('__TEXT.__shellcode'))
+  const shellcode_section = (await r2.cmdj('iSj'))
+    .find(x => x.name.includes('__TEXT.__shellcode'))
 
   if (!shellcode_section) {
     throw new Error('Cannot find __TEXT.__shellcode section')
   }
 
-  return '0x' + shellcode_section.vaddr.toString(16)
+  return { addr: '0x' + shellcode_section.vaddr.toString(16), length: 0x1000 }
 }
 
-async function main(file) {
+function save_backup(file) {
+  const new_filename = file + '-obfuscated'
+  fs.copyFileSync(file, new_filename)
+  return new_filename
+}
+
+async function main(file, opts) {
   try {
-    make_rwx_and_add_section(file)
-    const r2 = await r2promise.open(file, ['-w'])
-    console.log(await r2.cmd(`?E Meterpreter osx/x64/meterpreter_reverse_https manual ofbuscation - ${file}`))
+    console.log(BANNER)
+    print_radare2_version()
+    file = save_backup(file)
+    let r2 = await r2promise.open(file, ['-w', '-e bin.strings=false'])
+    console.log(await r2.cmd(`?E Processing ${file}`))
+    if (!opts.use_code_cave) {
+      await make_segment_rwx(r2, file)
+      await add_section(r2, file)
+      await r2.quit()
+      r2 = await r2promise.open(file, ['-w', '-e bin.strings=false'])
+    }
+
     const entry_point = await find_entry_point(r2)
-    const sections = await find_sections(r2)
-    //const code_cave = await find_code_cave(r2, sections)
-    const shellcode_section = await find_shellcode_section(r2)
     const entry_point_bytes = await find_entry_point_bytes(r2)
-    create_stub(sections, entry_point, entry_point_bytes)
+    const sections = await find_sections(r2)
+    const stub_length = await create_stub(r2, sections, entry_point, entry_point_bytes, opts)
+    const code_cave = await (opts.use_code_cave ? find_code_cave(r2, sections, stub_length) : find_shellcode_section(r2))
     await xor_sections(r2, sections)
-    await patch_entry_point(r2, entry_point, shellcode_section)
-    await patch_code_cave(r2, shellcode_section)
-    //await remove_pie(r2, file)
+    await patch_entry_point(r2, entry_point, code_cave)
+    await patch_code_cave(r2, code_cave, stub_length)
+    await disable_pie(r2, file)
     console.log(await r2.cmd(`?E Done! Check ${file}`))
     return r2.quit()
   } catch (err) {
@@ -162,6 +241,8 @@ if (!process.argv[2]) {
     return
 }
 
-fs.copyFileSync(process.argv[2], process.argv[2] + '-obfuscated');
+const opts = {
+  use_code_cave: process.argv[3] || false
+}
 
-main(process.argv[2] + '-obfuscated')
+main(process.argv[2], opts)
