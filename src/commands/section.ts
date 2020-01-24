@@ -7,7 +7,7 @@ import { Options, Techniques } from '../models'
 import { print_banner } from '../utils/banner'
 
 export default class Section extends Command {
-  static description = 'Encrypt binary using code cave technique'
+  static description = 'Encrypt binary using a new executable section'
 
   static examples = [
     `$ x0rro section -x 0xf -s __text,__data myfile`,

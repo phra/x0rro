@@ -31,6 +31,7 @@ USAGE
 <!-- commands -->
 * [`x0rro cave [FILE]`](#x0rro-cave-file)
 * [`x0rro help [COMMAND]`](#x0rro-help-command)
+* [`x0rro interactive [FILE]`](#x0rro-interactive-file)
 * [`x0rro section [FILE]`](#x0rro-section-file)
 
 ## `x0rro cave [FILE]`
@@ -43,8 +44,8 @@ USAGE
 
 OPTIONS
   -h, --help               show CLI help
-  -s, --sections=sections  [default: __text] sections to xor separated by comma (default: __text)
-  -x, --xor=xor            [default: 0xf] xor key to use in hexadecimal (default: 0xf)
+  -s, --sections=sections  [default: __text] sections to xor separated by comma
+  -x, --xor=xor            [default: 0xf] xor key to use in hexadecimal
 
 EXAMPLE
   $ x0rro cave -x 0xf -s __text,__data myfile
@@ -69,9 +70,26 @@ OPTIONS
 
 _See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v2.2.3/src/commands/help.ts)_
 
-## `x0rro section [FILE]`
+## `x0rro interactive [FILE]`
 
 Encrypt binary using code cave technique
+
+```
+USAGE
+  $ x0rro interactive [FILE]
+
+OPTIONS
+  -h, --help  show CLI help
+
+EXAMPLE
+  $ x0rro interactive myfile
+```
+
+_See code: [src/commands/interactive.ts](https://github.com/phra/x0rro/blob/v1.0.0/src/commands/interactive.ts)_
+
+## `x0rro section [FILE]`
+
+Encrypt binary using a new executable section
 
 ```
 USAGE
@@ -79,8 +97,8 @@ USAGE
 
 OPTIONS
   -h, --help               show CLI help
-  -s, --sections=sections  [default: __text] sections to xor separated by comma (default: __text)
-  -x, --xor=xor            [default: 0xf] xor key to use in hexadecimal (default: 0xf)
+  -s, --sections=sections  [default: __text] sections to xor separated by comma
+  -x, --xor=xor            [default: 0xf] xor key to use in hexadecimal
 
 EXAMPLE
   $ x0rro section -x 0xf -s __text,__data myfile
