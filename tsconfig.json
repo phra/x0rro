@@ -1,12 +1,16 @@
 {
-    "compilerOptions": {
-      "target": "esnext",
-      "module": "commonjs",
-      "outDir": "./dist",
-      "strict": true,
-      "sourceMap": true,
-      "moduleResolution": "node",
-      "noImplicitAny": true,
-      "declaration": true
-    }
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "commonjs",
+    "outDir": "lib",
+    "rootDir": "src",
+    "strict": true,
+    "alwaysStrict": true,
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "noImplicitAny": true,
+    "declaration": true,
+    "importHelpers": true,
+    "resolveJsonModule": true
   }
+}

@@ -1,19 +1,53 @@
 {
-  "name": "xor-meterpreter-osx",
+  "name": "x0rro",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "bin": {
+    "x0rro": "./bin/run"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "engines": {
+    "node": ">=13.0.0"
+  },
+  "files": [
+    "/bin",
+    "/lib",
+    "/npm-shrinkwrap.json",
+    "/oclif.manifest.json"
+  ],
+  "homepage": "https://github.com/phra/x0rro",
+  "keywords": [
+    "oclif"
+  ],
+  "license": "GPL-2.0-or-later",
+  "main": "lib/index.js",
+  "oclif": {
+    "commands": "./lib/commands",
+    "bin": "x0rro",
+    "plugins": [
+      "@oclif/plugin-help"
+    ]
+  },
+  "repository": "phra/x0rro",
+  "scripts": {
+    "readme": "oclif-dev readme",
+    "start": "./bin/run",
+    "postpack": "rm -f oclif.manifest.json",
+    "posttest": "eslint . --ext .ts --config .eslintrc.js",
+    "prepack": "rm -rf lib && tsc -b && oclif-dev manifest && oclif-dev readme",
+    "test": "echo NO TESTS",
+    "version": "oclif-dev readme && git add README.md"
+  },
+  "types": "lib/index.d.ts",
   "dependencies": {
+    "@oclif/command": "^1",
+    "@oclif/config": "^1",
+    "@oclif/plugin-help": "^2",
     "mustache": "^4.0.0",
-    "r2pipe-promise": "^1.6.0"
+    "r2pipe-promise": "^1.6.0",
+    "tslib": "^1"
   },
   "devDependencies": {
+    "@oclif/dev-cli": "^1",
     "@types/mustache": "^4.0.0",
     "@types/node": "^13.5.0",
     "@typescript-eslint/eslint-plugin": "^2.17.0",
