@@ -213,7 +213,7 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
     await xor_sections(r2, sections, opts.xor_key)
     await patch_entry_point(r2, entry_point, code_cave)
     await patch_code_cave(r2, code_cave, stub_length)
-    await disable_pie(r2, file)
+    //await disable_pie(r2, file)
     console.log(await r2.cmd(`?E Done! Check ${file}`))
     return r2.quit()
   } catch (err) {

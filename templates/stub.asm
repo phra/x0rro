@@ -5,7 +5,7 @@ _save_registers:
     push rdi
     push rcx
 {{#sections}}
-    mov rdi, {{{vaddr}}}
+    lea rdi, [{{{vaddr}}}]
     mov rcx, rdi
     add rcx, {{{vsize}}}
 _xor_loop{{{name}}}:
@@ -15,7 +15,7 @@ _xor_loop{{{name}}}:
     jl _xor_loop{{{name}}}
 {{/sections}}
 _restore_original_instructions:
-    mov rdi, {{{entry_point}}}
+    lea rdi, [{{{entry_point}}}]
     mov rcx, {{{entry_point_bytes}}}
     mov [rdi], rcx
 _restore_registers:
