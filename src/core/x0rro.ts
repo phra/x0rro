@@ -178,7 +178,7 @@ async function disable_pie(r2: R2Pipe, file: string): Promise<void> {
 
 async function find_shellcode_section(r2: R2Pipe): Promise<CodeCave> {
   const shellcode_section = (await get_sections(r2))
-    .find(x => x.name.includes('__TEXT.__shellcode'))
+    .find(x => x.name.includes('shellc'))
 
   if (!shellcode_section) {
     throw new Error('Cannot find __TEXT.__shellcode section')
