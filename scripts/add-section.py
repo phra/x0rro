@@ -34,7 +34,6 @@ elif isinstance(app, lief.ELF.Binary):
 elif isinstance(app, lief.PE.Binary):
   section = lief.PE.Section(shellcode, section_name, lief.PE.SECTION_CHARACTERISTICS.ALIGN_2BYTES | lief.PE.SECTION_CHARACTERISTICS.MEM_READ | lief.PE.SECTION_CHARACTERISTICS.MEM_WRITE | lief.PE.SECTION_CHARACTERISTICS.MEM_EXECUTE)
   section = app.add_section(section)
-
 else:
   raise Exception('Format not supported')
 
