@@ -9,7 +9,12 @@ import {
   EnrichedSection,
   Options,
   Techniques,
+  BinaryInfo,
 } from '../models'
+
+async function get_binary_info(r2: R2Pipe): Promise<BinaryInfo> {
+  return await r2.cmdj(`iaj`) as BinaryInfo
+}
 
 async function find_entry_point(r2: R2Pipe): Promise<string> {
   return (await r2.cmd('s')).trim()
@@ -108,17 +113,43 @@ async function xor_sections(r2: R2Pipe, sections: Section[], key: number): Promi
   }
 }
 
+function get_template_name(binary_info: BinaryInfo, opts: Options): string {
+  switch (binary_info.info.arch) {
+    case 'x86':
+      switch (binary_info.info.bits) {
+        case 64:
+          switch (binary_info.info.bintype) {
+            case 'elf':
+              return 'templates/linux/stub.mprotect.asm'
+            case 'pe':
+              return 'templates/stub.asm'
+            case 'mach0':
+              return opts.technique === Techniques.CODE_CAVE ? 'templates/stub.asm' : 'templates/osx/stub.mprotect.asm'
+            default:
+              throw new Error(`BinType not supported: ${binary_info.info.bintype}`)
+          }
+        default:
+          throw new Error(`Bits not supported: ${binary_info.info.bits}`)
+      }
+    default:
+      throw new Error(`Architecture not supported: ${binary_info.info.arch}`)
+  }
+}
+
 async function create_stub(
   r2: R2Pipe,
-  sections: Section[],
+  binary_info: BinaryInfo,
+  sections_xor: Section[],
+  sections_mprotect: Section[],
   entry_point: string,
   entry_point_bytes: string,
   opts: Options,
 ): Promise<number> {
-  const template_name = opts.technique === Techniques.CODE_CAVE ? 'templates/stub.mprotect.asm' : 'templates/stub.asm'
+  const template_name = get_template_name(binary_info, opts)
   const template = fs.readFileSync(template_name, { encoding: 'utf-8' })
   const data = {
-    sections,
+    sections_xor,
+    sections_mprotect,
     entry_point,
     entry_point_bytes,
     xor_key: opts.xor_key,
@@ -130,9 +161,19 @@ async function create_stub(
   return (await r2.cmd('waF* generated/stub.asm')).split(' ')[1].trim().length / 2
 }
 
-async function find_sections(r2: R2Pipe, sections: string[]): Promise<EnrichedSection[]> {
+async function find_sections_xor(r2: R2Pipe, sections: string[]): Promise<EnrichedSection[]> {
   return (await get_sections(r2))
     .filter(s => sections.some(w => s.name.includes(w)))
+    .map(s => ({
+      ...s,
+      page_start: get_page_start(s.vaddr),
+      psize: (s.vaddr - get_page_start(s.vaddr) + s.vsize)
+    }))
+}
+
+async function find_sections_mprotect(r2: R2Pipe, sections: string[]): Promise<EnrichedSection[]> {
+  return (await get_sections(r2))
+    .filter(s => sections.some(w => s.name.includes(w) || s.name.includes('text')))
     .map(s => ({
       ...s,
       page_start: get_page_start(s.vaddr),
@@ -205,12 +246,14 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
       r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
     }
 
+    const binary_info = await get_binary_info(r2)
     const entry_point = await find_entry_point(r2)
     const entry_point_bytes = await find_entry_point_bytes(r2)
-    const sections = await find_sections(r2, opts.sections)
-    const stub_length = await create_stub(r2, sections, entry_point, entry_point_bytes, opts)
-    const code_cave = await (opts.technique === Techniques.CODE_CAVE ? find_code_cave(r2, sections, stub_length) : find_shellcode_section(r2))
-    await xor_sections(r2, sections, opts.xor_key)
+    const sections_xor = await find_sections_xor(r2, opts.sections)
+    const sections_mprotect = await find_sections_mprotect(r2, opts.sections)
+    const stub_length = await create_stub(r2, binary_info, sections_xor, sections_mprotect, entry_point, entry_point_bytes, opts)
+    const code_cave = await (opts.technique === Techniques.CODE_CAVE ? find_code_cave(r2, sections_xor, stub_length) : find_shellcode_section(r2))
+    await xor_sections(r2, sections_xor, opts.xor_key)
     await patch_entry_point(r2, entry_point, code_cave)
     await patch_code_cave(r2, code_cave, stub_length)
     //await disable_pie(r2, file)

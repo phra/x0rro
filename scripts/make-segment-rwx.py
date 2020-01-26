@@ -20,14 +20,14 @@ def make_section_rwx(section):
 
 def make_pe_section_rwx(section):
   print('making {} rwx'.format(section.name))
-  section.characteristics = lief.PE.SECTION_CHARACTERISTICS.MEM_READ | lief.PE.SECTION_CHARACTERISTICS.MEM_WRITE | lief.PE.SECTION_CHARACTERISTICS.MEM_EXECUTE
+  section.characteristics = section.characteristics | lief.PE.SECTION_CHARACTERISTICS.MEM_READ | lief.PE.SECTION_CHARACTERISTICS.MEM_WRITE | lief.PE.SECTION_CHARACTERISTICS.MEM_EXECUTE
 
 filename = sys.argv[1]
 
 app = lief.parse(filename)
 
 if isinstance(app, lief.MachO.Binary):
-  if len(sys.argv) == 2:
+  if len(sys.argv) == 3:
     for segment in app.segments:
       make_segment_rwx(segment)
   else:
@@ -36,7 +36,7 @@ if isinstance(app, lief.MachO.Binary):
         if sys.argv[i] in segment.name:
           make_segment_rwx(segment)
 elif isinstance(app, lief.ELF.Binary):
-  if len(sys.argv) == 2:
+  if len(sys.argv) == 3:
     for segment in app.segments:
       for section in segment.sections:
         make_section_rwx(section)
@@ -47,7 +47,7 @@ elif isinstance(app, lief.ELF.Binary):
           if sys.argv[i] in section.name:
             make_section_rwx(section)
 elif isinstance(app, lief.PE.Binary):
-  if len(sys.argv) == 2:
+  if len(sys.argv) == 3:
     for section in app.sections:
       make_pe_section_rwx(section)
   else:
