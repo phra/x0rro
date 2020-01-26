@@ -54,12 +54,34 @@ export default class Interactive extends Command {
         ],
       }, {
         name: 'sections',
-        message: 'choose sections to encrypt [default: __text]',
+        message: 'choose sections to be entirely encrypted [default: __text]',
         type: 'checkbox',
         default: 1,
         choices: sections.map(x => x.name).filter(x => x),
       },
     ])
+
+    const custom_sections = (await prompt([
+      {
+        name: 'custom_sections',
+        message: 'choose sections to partial encrypt (ie. with manual ranges)',
+        type: 'checkbox',
+        default: 1,
+        choices: sections.map(x => x.name).filter(x => x),
+      },
+    ])).custom_sections
+
+    for (const custom_section of custom_sections) {
+      const range = (await prompt({
+        name: 'range',
+        message: `provide a custom range for ${custom_section} in hex format [eg: 0x140004000-0x140004270]`,
+        type: 'input',
+        default: '0x140004000-0x140004270',
+        validate: x => x[0] === '0' && x[1] === 'x' && x.indexOf('-') >= 0,
+      })).range
+
+      responses.sections.push(`${custom_section}[${range}]`)
+    }
 
     responses.sections = responses.sections.map(x => x.substr(x.indexOf('.')))
 

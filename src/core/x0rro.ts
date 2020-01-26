@@ -161,19 +161,46 @@ async function create_stub(
   return (await r2.cmd('waF* generated/stub.asm')).split(' ')[1].trim().length / 2
 }
 
+// x0rro section -x 0xf -s __text[0x11223344-0x11223355,0x11223366-0x11223377],__data myfile
 async function find_sections_xor(r2: R2Pipe, sections: string[]): Promise<EnrichedSection[]> {
-  return (await get_sections(r2))
-    .filter(s => sections.some(w => s.name.includes(w)))
+  const base_addr = (await r2.cmdj('iaj')).info.baddr
+  const custom_sections = sections.filter(s => s.indexOf('[') >= 0)
+  const regular_sections = sections.filter(s => s.indexOf('[') < 0)
+  const enriched_sections = (await get_sections(r2))
+    .filter(s => regular_sections.some(w => s.name.includes(w)))
     .map(s => ({
       ...s,
       page_start: get_page_start(s.vaddr),
       psize: (s.vaddr - get_page_start(s.vaddr) + s.vsize)
+    }));
+
+  ((await get_sections(r2))
+    .filter(s => custom_sections.some(w => s.name.includes(w.split('[')[0])))
+    .forEach(s => {
+      const section = custom_sections.find(w => s.name.includes(w.split('[')[0]))!
+      const ranges = section.split('[')[1].split(']')[0].split(',')
+      ranges.forEach((range, i) => {
+        const start = Number(BigInt(range.split('-')[0]) & 0xfffffffn) + base_addr
+        const end = Number(BigInt(range.split('-')[1]) & 0xfffffffn) + base_addr
+        const size = end - start
+
+        enriched_sections.push({
+          ...s,
+          vaddr: start,
+          vsize: size,
+          name: s.name + i,
+          page_start: get_page_start(start),
+          psize: (start - get_page_start(start) + size)
+        })
+      })
     }))
+
+  return enriched_sections
 }
 
 async function find_sections_mprotect(r2: R2Pipe, sections: string[]): Promise<EnrichedSection[]> {
   return (await get_sections(r2))
-    .filter(s => sections.some(w => s.name.includes(w) || s.name.includes('text')))
+    .filter(s => sections.some(w => s.name.includes(w.split('[')[0]) || s.name.includes('text')))
     .map(s => ({
       ...s,
       page_start: get_page_start(s.vaddr),
