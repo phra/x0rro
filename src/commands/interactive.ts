@@ -57,7 +57,7 @@ export default class Interactive extends Command {
         message: 'choose sections to encrypt [default: __text]',
         type: 'checkbox',
         default: 1,
-        choices: sections.map(x => x.name),
+        choices: sections.map(x => x.name).filter(x => x),
       },
     ])
 

@@ -4,6 +4,14 @@
 _save_registers:
     push rdi
     push rcx
+{{#sections_mprotect}}
+_mprotect{{{name}}}:
+    lea rdi, [{{{page_start}}}]
+    mov rsi, {{{psize}}}
+    mov rdx, 0x7 ; rwx
+    mov rax, 10 ; mprotect linux
+    syscall
+{{/sections_mprotect}}
 {{#sections_xor}}
     lea rdi, [{{{vaddr}}}]
     mov rcx, rdi
