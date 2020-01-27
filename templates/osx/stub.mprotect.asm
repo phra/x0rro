@@ -27,15 +27,15 @@ xor_loop{{{name}}}:
     cmp rdi, rcx
     jl xor_loop{{{name}}}
 {{/sections_xor}}
+original_instructions:
+    lea rdi, [{{{entry_point}}}]
+    mov rcx, {{{entry_point_bytes}}}
+    mov [rdi], rcx
 _restore_registers:
     pop rax
     pop rcx
     pop rdx
     pop rsi
     pop rdi
-original_instructions:
-    lea rdi, [{{{entry_point}}}]
-    mov rcx, {{{entry_point_bytes}}}
-    mov [rdi], rcx
 jmp_back:
     jmp {{{entry_point}}}
