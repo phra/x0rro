@@ -72,11 +72,14 @@ export default class Interactive extends Command {
     ])).custom_sections
 
     for (const custom_section of custom_sections) {
+      const section = sections.find(s => s.name.includes(custom_section))
+      const start = '0x' + section.vaddr.toString(16)
+      const end = '0x' + (section.vaddr + section.vsize).toString(16)
       const range = (await prompt({
         name: 'range',
-        message: `provide a custom range for ${custom_section} in hex format [eg: 0x140004000-0x140004270]`,
+        message: `provide a custom range for ${custom_section} in hex format [eg: ${start}-${end}]`,
         type: 'input',
-        default: '0x140004000-0x140004270',
+        default: `${start}-${end}`,
         validate: x => x[0] === '0' && x[1] === 'x' && x.indexOf('-') >= 0,
       })).range
 
