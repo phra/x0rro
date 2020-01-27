@@ -81,7 +81,7 @@ async function find_code_cave(r2: R2Pipe, sections_to_xor: Section[], stub_lengt
   for (const x of code_caves) {
     code_caves_with_length.push({
       addr: x,
-      length: await calculate_length_code_cave(r2, x),
+      length: 0x1000 // await calculate_length_code_cave(r2, x),
     })
   }
 
@@ -131,7 +131,7 @@ function get_template_name(binary_info: BinaryInfo, opts: Options): string {
             case 'pe':
               return 'templates/stub.asm'
             case 'mach0':
-              return opts.technique === Techniques.CODE_CAVE ? 'templates/stub.asm' : 'templates/osx/stub.mprotect.asm'
+              return 'templates/osx/stub.mprotect.asm'
             default:
               throw new Error(`BinType not supported: ${binary_info.info.bintype}`)
           }
@@ -142,7 +142,7 @@ function get_template_name(binary_info: BinaryInfo, opts: Options): string {
               case 'pe':
                 return 'templates/stub.x86.asm'
               case 'mach0':
-                return opts.technique === Techniques.CODE_CAVE ? 'templates/stub.x86.asm' : 'templates/osx/stub.mprotect.x86.asm'
+                return 'templates/osx/stub.mprotect.x86.asm'
               default:
                 throw new Error(`BinType not supported: ${binary_info.info.bintype}`)
             }
@@ -296,8 +296,11 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
   try {
     file = save_backup(file)
     let r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
+    const binary_info = await get_binary_info(r2)
     console.log(await r2.cmd(`?E Processing ${file}`))
-    await make_segment_rwx(r2, file)
+    if (binary_info.info.bintype === 'pe') {
+      await make_segment_rwx(r2, file)
+    }
 
     if (opts.technique === Techniques.ADD_SECTION) {
       await add_section(r2, file)
@@ -306,7 +309,6 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
     await r2.quit()
     r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
 
-    const binary_info = await get_binary_info(r2)
     const entry_point = await find_entry_point(r2)
     const entry_point_bytes = await find_entry_point_bytes(r2, binary_info)
     const sections_xor = await find_sections_xor(r2, opts.sections)
