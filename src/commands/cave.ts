@@ -10,6 +10,7 @@ export default class Cave extends Command {
 
   static examples = [
     `$ x0rro cave -x 0xf -s __text,__data myfile`,
+    `$ x0rro cave -x 0xf -s aogf[0x140004000-0x140004290] test.exe`
   ]
 
   static flags = {

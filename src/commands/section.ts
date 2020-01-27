@@ -11,6 +11,7 @@ export default class Section extends Command {
 
   static examples = [
     `$ x0rro section -x 0xf -s __text,__data myfile`,
+    `$ x0rro section -x 0xf -s aogf[0x140004000-0x140004290] test.exe`
   ]
 
   static flags = {

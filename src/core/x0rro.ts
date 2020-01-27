@@ -20,8 +20,15 @@ async function find_entry_point(r2: R2Pipe): Promise<string> {
   return (await r2.cmd('s')).trim()
 }
 
-async function find_entry_point_bytes(r2: R2Pipe): Promise<string> {
-  return (await r2.cmd('pxq 8')).split(' ')[2] // TODO: x86 bits
+async function find_entry_point_bytes(r2: R2Pipe, binary_info: BinaryInfo): Promise<string> {
+  switch (binary_info.info.bits) {
+    case 64:
+      return (await r2.cmd('pxq 8')).split(' ')[2]
+    case 32:
+        return (await r2.cmd('pxw 4')).split(' ')[2]
+    default:
+      throw new Error(`Bits not supported: ${binary_info.info.bits}`)
+  }
 }
 
 async function calculate_length_code_cave(r2: R2Pipe, code_cave: string): Promise<number> {
@@ -128,6 +135,17 @@ function get_template_name(binary_info: BinaryInfo, opts: Options): string {
             default:
               throw new Error(`BinType not supported: ${binary_info.info.bintype}`)
           }
+          case 32:
+            switch (binary_info.info.bintype) {
+              case 'elf':
+                return 'templates/linux/stub.mprotect.x86.asm'
+              case 'pe':
+                return 'templates/stub.x86.asm'
+              case 'mach0':
+                return opts.technique === Techniques.CODE_CAVE ? 'templates/stub.x86.asm' : 'templates/osx/stub.mprotect.x86.asm'
+              default:
+                throw new Error(`BinType not supported: ${binary_info.info.bintype}`)
+            }
         default:
           throw new Error(`Bits not supported: ${binary_info.info.bits}`)
       }
@@ -162,18 +180,44 @@ async function create_stub(
 }
 
 async function find_sections_xor(r2: R2Pipe, sections: string[]): Promise<EnrichedSection[]> {
-  return (await get_sections(r2))
-    .filter(s => sections.some(w => s.name.includes(w)))
+  const base_addr = (await r2.cmdj('iaj')).info.baddr
+  const custom_sections = sections.filter(s => s.indexOf('[') >= 0)
+  const regular_sections = sections.filter(s => s.indexOf('[') < 0)
+  const enriched_sections = (await get_sections(r2))
+    .filter(s => regular_sections.some(w => s.name.includes(w)))
     .map(s => ({
       ...s,
       page_start: get_page_start(s.vaddr),
       psize: (s.vaddr - get_page_start(s.vaddr) + s.vsize)
+    }));
+
+  ((await get_sections(r2))
+    .filter(s => custom_sections.some(w => s.name.includes(w.split('[')[0])))
+    .forEach(s => {
+      const section = custom_sections.find(w => s.name.includes(w.split('[')[0]))!
+      const ranges = section.split('[')[1].split(']')[0].split(',')
+      ranges.forEach((range, i) => {
+        const start = Number(BigInt(range.split('-')[0]) & 0xfffffffn) + base_addr
+        const end = Number(BigInt(range.split('-')[1]) & 0xfffffffn) + base_addr
+        const size = end - start
+
+        enriched_sections.push({
+          ...s,
+          vaddr: start,
+          vsize: size,
+          name: s.name + i,
+          page_start: get_page_start(start),
+          psize: (start - get_page_start(start) + size)
+        })
+      })
     }))
+
+  return enriched_sections
 }
 
 async function find_sections_mprotect(r2: R2Pipe, sections: string[]): Promise<EnrichedSection[]> {
   return (await get_sections(r2))
-    .filter(s => sections.some(w => s.name.includes(w) || s.name.includes('text')))
+    .filter(s => sections.some(w => s.name.includes(w.split('[')[0]) || s.name.includes('text')))
     .map(s => ({
       ...s,
       page_start: get_page_start(s.vaddr),
@@ -234,25 +278,49 @@ function save_backup(file: string): string {
   return new_filename
 }
 
+function unmap_sections(sections: EnrichedSection[], code_cave: CodeCave): EnrichedSection[] {
+  sections.forEach(s => console.log(s.name + ' ' + s.vaddr.toString(16) + ' ' + (s.vaddr - (parseInt(code_cave.addr, 16) + 5)).toString(16)))
+  return sections.map(s => ({
+    ...s,
+    page_start: s.page_start - (parseInt(code_cave.addr, 16) + 9),
+    vaddr: s.vaddr - (parseInt(code_cave.addr, 16) + 9),
+  }))
+}
+
+function unmap_entry_point(entry_point: string, code_cave: CodeCave): string {
+  const res = parseInt(entry_point, 16) - (parseInt(code_cave.addr, 16) + 5)
+  return res >= 0 ? '0x' + res.toString(16) : '-0x' + res.toString(16).substr(1)
+}
+
 export async function x0rro(file: string, opts: Options): Promise<void> {
   try {
     file = save_backup(file)
     let r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
     console.log(await r2.cmd(`?E Processing ${file}`))
+    await make_segment_rwx(r2, file)
+
     if (opts.technique === Techniques.ADD_SECTION) {
-      await make_segment_rwx(r2, file)
       await add_section(r2, file)
-      await r2.quit()
-      r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
     }
+
+    await r2.quit()
+    r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
 
     const binary_info = await get_binary_info(r2)
     const entry_point = await find_entry_point(r2)
-    const entry_point_bytes = await find_entry_point_bytes(r2)
+    const entry_point_bytes = await find_entry_point_bytes(r2, binary_info)
     const sections_xor = await find_sections_xor(r2, opts.sections)
     const sections_mprotect = await find_sections_mprotect(r2, opts.sections)
     const stub_length = await create_stub(r2, binary_info, sections_xor, sections_mprotect, entry_point, entry_point_bytes, opts)
     const code_cave = await (opts.technique === Techniques.CODE_CAVE ? find_code_cave(r2, sections_xor, stub_length) : find_shellcode_section(r2))
+
+    if (binary_info.info.bits === 32) {
+      const unmapped_section_xor = unmap_sections(sections_xor, code_cave)
+      const unmapped_section_mprotect = unmap_sections(sections_mprotect, code_cave)
+      const unmapped_entry_point = unmap_entry_point(entry_point, code_cave)
+      await create_stub(r2, binary_info, unmapped_section_xor, unmapped_section_mprotect, unmapped_entry_point, entry_point_bytes, opts)
+    }
+
     await xor_sections(r2, sections_xor, opts.xor_key)
     await patch_entry_point(r2, entry_point, code_cave)
     await patch_code_cave(r2, code_cave, stub_length)
