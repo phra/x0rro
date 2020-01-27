@@ -281,7 +281,6 @@ function save_backup(file: string): string {
 }
 
 function unmap_sections(sections: EnrichedSection[], code_cave: CodeCave): EnrichedSection[] {
-  sections.forEach(s => console.log(s.name + ' ' + s.vaddr.toString(16) + ' ' + (s.vaddr - (parseInt(code_cave.addr, 16) + 5)).toString(16)))
   return sections.map(s => ({
     ...s,
     page_start: s.page_start - (parseInt(code_cave.addr, 16) + 9),
