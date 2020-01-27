@@ -180,7 +180,9 @@ async function create_stub(
 }
 
 async function find_sections_xor(r2: R2Pipe, sections: string[]): Promise<EnrichedSection[]> {
-  const base_addr = (await r2.cmdj('iaj')).info.baddr
+  const info = (await r2.cmdj('iaj')).info
+  const base_addr = info.baddr
+  const bits = info.bits
   const custom_sections = sections.filter(s => s.indexOf('[') >= 0)
   const regular_sections = sections.filter(s => s.indexOf('[') < 0)
   const enriched_sections = (await get_sections(r2))
@@ -197,8 +199,8 @@ async function find_sections_xor(r2: R2Pipe, sections: string[]): Promise<Enrich
       const section = custom_sections.find(w => s.name.includes(w.split('[')[0]))!
       const ranges = section.split('[')[1].split(']')[0].split(',')
       ranges.forEach((range, i) => {
-        const start = Number(BigInt(range.split('-')[0]) & 0xfffffffn) + base_addr
-        const end = Number(BigInt(range.split('-')[1]) & 0xfffffffn) + base_addr
+        const start = Number(BigInt(range.split('-')[0]) & (bits === 32 ? 0xfffffn : 0xfffffffn)) + base_addr
+        const end = Number(BigInt(range.split('-')[1]) & (bits === 32 ? 0xfffffn : 0xfffffffn)) + base_addr
         const size = end - start
 
         enriched_sections.push({
