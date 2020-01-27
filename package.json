@@ -29,6 +29,7 @@
   },
   "repository": "phra/x0rro",
   "scripts": {
+    "postinstall": "echo Installing Python3 deps && pip3 install -r requirements.txt",
     "readme": "oclif-dev readme",
     "start": "./bin/run",
     "postpack": "rm -f oclif.manifest.json",
