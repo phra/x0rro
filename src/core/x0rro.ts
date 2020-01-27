@@ -191,7 +191,7 @@ async function find_sections_xor(r2: R2Pipe, sections: string[]): Promise<Enrich
       psize: (s.vaddr - get_page_start(s.vaddr) + s.vsize)
     }));
 
-  ((await get_sections(r2))
+  (await get_sections(r2))
     .filter(s => custom_sections.some(w => s.name.includes(w.split('[')[0])))
     .forEach(s => {
       const section = custom_sections.find(w => s.name.includes(w.split('[')[0]))!
@@ -210,7 +210,7 @@ async function find_sections_xor(r2: R2Pipe, sections: string[]): Promise<Enrich
           psize: (start - get_page_start(start) + size)
         })
       })
-    }))
+    })
 
   return enriched_sections
 }
