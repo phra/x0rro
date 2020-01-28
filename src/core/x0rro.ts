@@ -263,6 +263,11 @@ async function disable_pie(r2: R2Pipe, file: string): Promise<void> {
   console.log(execFileSync('python3', ['scripts/disable-pie.py', file], { encoding: 'utf-8' }))
 }
 
+async function update_entrypoint(r2: R2Pipe, file: string, addr: string): Promise<void> {
+  console.log(await r2.cmd(`?E Disabling PIE - ${file}`))
+  console.log(execFileSync('python3', ['scripts/change-entrypoint.py', file, addr], { encoding: 'utf-8' }))
+}
+
 async function find_shellcode_section(r2: R2Pipe): Promise<CodeCave> {
   const shellcode_section = (await get_sections(r2))
     .find(x => x.name.includes('shellc'))
@@ -289,7 +294,7 @@ function unmap_sections(sections: EnrichedSection[], code_cave: CodeCave): Enric
 }
 
 function unmap_entry_point(entry_point: string, code_cave: CodeCave): string {
-  const res = parseInt(entry_point, 16) - (parseInt(code_cave.addr, 16) + 5)
+  const res = parseInt(entry_point, 16) - (parseInt(code_cave.addr, 16) + 9)
   return res >= 0 ? '0x' + res.toString(16) : '-0x' + res.toString(16).substr(1)
 }
 
@@ -327,6 +332,10 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
     await xor_sections(r2, sections_xor, opts.xor_key)
     await patch_entry_point(r2, entry_point, code_cave)
     await patch_code_cave(r2, code_cave, stub_length)
+    if (binary_info.info.bits === 64 && (binary_info.info.bintype === 'elf' || binary_info.info.bintype === 'mach0')) {
+      update_entrypoint(r2, file, code_cave.addr)
+    }
+
     //await disable_pie(r2, file)
     console.log(await r2.cmd(`?E Done! Check ${file}`))
     return r2.quit()

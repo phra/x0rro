@@ -3,7 +3,10 @@
 
 _save_registers:
     push rdi
+    push rsi
+    push rdx
     push rcx
+    push rax
 {{#sections_mprotect}}
 _mprotect{{{name}}}:
     lea rdi, [{{{page_start}}}]
@@ -25,9 +28,13 @@ _xor_loop{{{name}}}:
 _restore_original_instructions:
     lea rdi, [{{{entry_point}}}]
     mov rcx, {{{entry_point_bytes}}}
+    clflush [rdi]
     mov [rdi], rcx
 _restore_registers:
+    pop rax
     pop rcx
+    pop rdx
+    pop rsi
     pop rdi
 _jmp_back:
     jmp {{{entry_point}}}
