@@ -264,7 +264,7 @@ async function disable_pie(r2: R2Pipe, file: string): Promise<void> {
 }
 
 async function update_entrypoint(r2: R2Pipe, file: string, addr: string): Promise<void> {
-  console.log(await r2.cmd(`?E Disabling PIE - ${file}`))
+  console.log(await r2.cmd(`?E Updating entry point to ${addr} - ${file}`))
   console.log(execFileSync('python3', ['scripts/change-entrypoint.py', file, addr], { encoding: 'utf-8' }))
 }
 
