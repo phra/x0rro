@@ -304,7 +304,7 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
     let r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
     const binary_info = await get_binary_info(r2)
     console.log(await r2.cmd(`?E Processing ${file}`))
-    if (binary_info.info.bintype === 'pe') {
+    if (binary_info.info.bintype === 'pe' || binary_info.info.bintype === 'mach0') {
       await make_segment_rwx(r2, file)
     }
 

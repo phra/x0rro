@@ -8,6 +8,7 @@ if len(sys.argv) < 2:
     sys.exit(-1)
 
 def make_segment_rwx(segment):
+  if not 'PAGEZERO' in segment.name:
     print('making {} rwx'.format(segment.name))
     segment.max_protection = 7
     #segment.init_protection = 7
