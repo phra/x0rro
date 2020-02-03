@@ -8,7 +8,7 @@ import { Options, Techniques, Section } from '../models'
 import { print_banner } from '../utils/banner'
 
 export default class Interactive extends Command {
-  static description = 'Encrypt binary using code cave technique'
+  static description = 'Encrypt binary with an interactive wizard'
 
   static examples = [
     `$ x0rro interactive myfile`,
@@ -61,7 +61,7 @@ export default class Interactive extends Command {
       },
     ])
 
-    const custom_sections = (await prompt([
+    const { custom_sections } = await prompt([
       {
         name: 'custom_sections',
         message: 'choose sections to partial encrypt (ie. with manual ranges)',
@@ -69,10 +69,14 @@ export default class Interactive extends Command {
         default: 1,
         choices: sections.map(x => x.name).filter(x => x),
       },
-    ])).custom_sections
+    ])
 
     for (const custom_section of custom_sections) {
       const section = sections.find(s => s.name.includes(custom_section))
+      if (!section) {
+        throw new Error('Error when parsing sections')
+      }
+
       const start = '0x' + section.vaddr.toString(16)
       const end = '0x' + (section.vaddr + section.vsize).toString(16)
       const range = (await prompt({
