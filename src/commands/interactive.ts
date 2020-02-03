@@ -84,7 +84,15 @@ export default class Interactive extends Command {
         message: `provide a custom range for ${custom_section} in hex format [eg: ${start}-${end}]`,
         type: 'input',
         default: `${start}-${end}`,
-        validate: x => x[0] === '0' && x[1] === 'x' && x.indexOf('-') >= 0,
+        validate: x => {
+          let valid = true
+          valid = valid && x[0] === '0' && x[1] === 'x' && x.indexOf('-') >= 0
+          const start_input = x.split('-')[0]
+          const end_input = x.split('-')[1]
+          valid = valid && parseInt(start_input, 16) >= section.vaddr
+          valid = valid && parseInt(end_input, 16) <= section.vaddr + section.vsize
+          return valid
+        },
       })).range
 
       responses.sections.push(`${custom_section}[${range}]`)
