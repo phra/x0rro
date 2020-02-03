@@ -19,5 +19,7 @@ if len(sys.argv) == 3:
         app.main_command.entrypoint = int(sys.argv[2], 16) - __TEXT.virtual_address
     elif isinstance(app, lief.ELF.Binary):
         app.header.entrypoint = int(sys.argv[2], 16)
+    elif isinstance(app, lief.PE.Binary):
+        app.optional_header.addressof_entrypoint = int(sys.argv[2], 16)
     print("new entrypoint is: " + hex(app.entrypoint))
     app.write(filename)
