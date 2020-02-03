@@ -24,7 +24,7 @@ if isinstance(app, lief.MachO.Binary):
   section += lief.MachO.SECTION_FLAGS.PURE_INSTRUCTIONS
   section = app.add_section(section)
 elif isinstance(app, lief.ELF.Binary):
-  section = lief.ELF.Section(section_name, lief.ELF.SECTION_TYPES.DYNSYM)
+  section = lief.ELF.Section(section_name, lief.ELF.SECTION_TYPES.SHLIB)
   section.alignment = 2
   section.content = shellcode
   section += lief.ELF.SECTION_FLAGS.EXECINSTR
