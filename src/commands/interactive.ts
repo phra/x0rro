@@ -6,6 +6,7 @@ import { R2Pipe } from 'r2pipe-promise'
 import { x0rro } from '../core'
 import { Options, Techniques, Section } from '../models'
 import { print_banner } from '../utils/banner'
+import { ensure_file_exists } from '../utils'
 
 export default class Interactive extends Command {
   static description = 'Encrypt binary with an interactive wizard'
@@ -21,12 +22,13 @@ export default class Interactive extends Command {
   }
 
   static args = [
-    { name: 'file' },
+    { name: 'file', required: true },
   ]
 
   async run(): Promise<void> {
     print_banner()
     const { args, flags } = this.parse(Interactive)
+    ensure_file_exists(args.file)
     const r2 = await R2Pipe.open(args.file)
     const sections = await r2.cmdj('iSj') as Section[]
     await r2.quit()

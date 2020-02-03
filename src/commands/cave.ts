@@ -4,6 +4,7 @@ import { Command, flags } from '@oclif/command'
 import { x0rro } from '../core'
 import { Options, Techniques } from '../models'
 import { print_banner } from '../utils/banner'
+import { ensure_file_exists } from '../utils'
 
 export default class Cave extends Command {
   static description = 'Encrypt binary using code cave technique'
@@ -30,7 +31,7 @@ export default class Cave extends Command {
   }
 
   static args = [
-    { name: 'file' },
+    { name: 'file', required: true },
   ]
 
 
@@ -38,6 +39,7 @@ export default class Cave extends Command {
   async run(): Promise<void> {
     print_banner()
     const { args, flags } = this.parse(Cave)
+    ensure_file_exists(args.file)
 
     const opts: Options = {
       technique: Techniques.CODE_CAVE,

@@ -5,6 +5,7 @@ import { execFileSync } from 'child_process'
 import { x0rro } from '../core'
 import { Options, Techniques } from '../models'
 import { print_banner } from '../utils/banner'
+import { ensure_file_exists } from '../utils'
 
 export default class Section extends Command {
   static description = 'Encrypt binary using a new executable section'
@@ -31,7 +32,7 @@ export default class Section extends Command {
   }
 
   static args = [
-    { name: 'file' },
+    { name: 'file', required: true },
   ]
 
   print_radare2_version(): void {
@@ -41,6 +42,7 @@ export default class Section extends Command {
   async run(): Promise<void> {
     print_banner()
     const { args, flags } = this.parse(Section)
+    ensure_file_exists(args.file)
 
     const opts: Options = {
       technique: Techniques.ADD_SECTION,
