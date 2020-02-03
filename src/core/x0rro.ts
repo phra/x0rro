@@ -179,12 +179,13 @@ async function create_stub(
   return (await r2.cmd('waF* generated/stub.asm')).split(' ')[1].trim().length / 2
 }
 
-async function find_sections_xor(r2: R2Pipe, sections: string[]): Promise<EnrichedSection[]> {
+async function find_sections_xor(r2: R2Pipe, sections: string[], original_sections: Section[]): Promise<EnrichedSection[]> {
   const info = (await r2.cmdj('iaj')).info
   const base_addr = info.baddr
   const bits = info.bits
   const custom_sections = sections.filter(s => s.indexOf('[') >= 0)
   const regular_sections = sections.filter(s => s.indexOf('[') < 0)
+  const current_sections = (await get_sections(r2))
   const enriched_sections = (await get_sections(r2))
     .filter(s => regular_sections.some(w => s.name.includes(w)))
     .map(s => ({
@@ -197,10 +198,14 @@ async function find_sections_xor(r2: R2Pipe, sections: string[]): Promise<Enrich
     .filter(s => custom_sections.some(w => s.name.includes(w.split('[')[0])))
     .forEach(s => {
       const section = custom_sections.find(w => s.name.includes(w.split('[')[0]))!
+      const section_name = section.split('[')[0]
+      const original_section = original_sections.find(s => s.name.includes(section_name))!
+      const current_section = current_sections.find(s => s.name.includes(section_name))!
+      const offset = current_section.vaddr - original_section.vaddr
       const ranges = section.split('[')[1].split(']')[0].split(',')
       ranges.forEach((range, i) => {
-        const start = Number(BigInt(range.split('-')[0]) & (bits === 32 ? 0xfffffn : 0xfffffffn)) + base_addr
-        const end = Number(BigInt(range.split('-')[1]) & (bits === 32 ? 0xfffffn : 0xfffffffn)) + base_addr
+        const start = Number(BigInt(range.split('-')[0])) + offset
+        const end = Number(BigInt(range.split('-')[1])) + offset
         const size = end - start
 
         enriched_sections.push({
@@ -269,8 +274,7 @@ async function update_entrypoint(r2: R2Pipe, file: string, addr: string): Promis
 }
 
 async function find_shellcode_section(r2: R2Pipe): Promise<CodeCave> {
-  const shellcode_section = (await get_sections(r2))
-    .find(x => x.name.includes('shellc'))
+  const shellcode_section = (await get_sections(r2)).find(x => x.name.includes('shellc'))
 
   if (!shellcode_section) {
     throw new Error('Cannot find __TEXT.__shellcode section')
@@ -303,6 +307,7 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
     file = save_backup(file)
     let r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
     const binary_info = await get_binary_info(r2)
+    const original_sections = await get_sections(r2)
     console.log(await r2.cmd(`?E Processing ${file}`))
     if (binary_info.info.bintype === 'pe' || binary_info.info.bintype === 'mach0') {
       await make_segment_rwx(r2, file)
@@ -317,7 +322,7 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
 
     const entry_point = await find_entry_point(r2)
     const entry_point_bytes = await find_entry_point_bytes(r2, binary_info)
-    const sections_xor = await find_sections_xor(r2, opts.sections)
+    const sections_xor = await find_sections_xor(r2, opts.sections, original_sections)
     const sections_mprotect = await find_sections_mprotect(r2, opts.sections)
     const stub_length = await create_stub(r2, binary_info, sections_xor, sections_mprotect, entry_point, entry_point_bytes, opts)
     const code_cave = await (opts.technique === Techniques.CODE_CAVE ? find_code_cave(r2, sections_xor, stub_length) : find_shellcode_section(r2))
@@ -332,9 +337,9 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
     await xor_sections(r2, sections_xor, opts.xor_key)
     await patch_entry_point(r2, entry_point, code_cave)
     await patch_code_cave(r2, code_cave, stub_length)
-    if (binary_info.info.bits === 64 && (binary_info.info.bintype === 'elf' || binary_info.info.bintype === 'mach0')) {
+    //if (binary_info.info.bits === 64 && (binary_info.info.bintype === 'elf' || binary_info.info.bintype === 'mach0')) {
       update_entrypoint(r2, file, code_cave.addr)
-    }
+    //}
 
     //await disable_pie(r2, file)
     console.log(await r2.cmd(`?E Done! Check ${file}`))
