@@ -44,6 +44,5 @@ _restore_registers:
     pop ebx
     pop ecx
     pop edx
-    cld
 _jmp_back:
     jmp edi

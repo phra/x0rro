@@ -28,7 +28,6 @@ _xor_loop{{{name}}}:
 _restore_original_instructions:
     lea rdi, [{{{entry_point}}}]
     mov rcx, {{{entry_point_bytes}}}
-    clflush [rdi]
     mov [rdi], rcx
 _restore_registers:
     pop rax
