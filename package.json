@@ -1,6 +1,6 @@
 {
   "name": "x0rro",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "bin": {
     "x0rro": "./bin/run"
