@@ -1,7 +1,8 @@
 import fs = require('fs')
+import { execFileSync } from 'child_process'
+
 import mustache = require('mustache')
 import { R2Pipe } from 'r2pipe-promise'
-import { execFileSync } from 'child_process'
 
 import {
   CodeCave,
