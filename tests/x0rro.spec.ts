@@ -44,4 +44,3 @@ describe('works on Linux', () => {
     })
   })
 })
-

@@ -1,5 +1,6 @@
 import fs = require('fs')
 import { execFileSync } from 'child_process'
+import { resolve } from 'path'
 
 import mustache = require('mustache')
 import { R2Pipe } from 'r2pipe-promise'
@@ -113,8 +114,8 @@ async function xor_sections(r2: R2Pipe, sections: Section[], key: number): Promi
     console.log(await r2.cmd(`px 32`))
     const values = await r2.cmdj(`pxj ${s.vsize}`) as number[]
     const new_values = values.map(value => (value ^ key).toString(16).padStart(2, '0')).join('')
-    fs.writeFileSync('generated/xored', new_values)
-    await r2.cmd(`wxf generated/xored`)
+    fs.writeFileSync(resolve(__dirname, '../../generated/xored'), new_values)
+    await r2.cmd(`wxf ${resolve(__dirname, '../../generated/xored')}`)
     console.log('after xor:')
     await r2.cmd(`s ${s.vaddr}`)
     console.log(await r2.cmd(`px 32`))
@@ -128,22 +129,22 @@ function get_template_name(binary_info: BinaryInfo, opts: Options): string {
         case 64:
           switch (binary_info.info.bintype) {
             case 'elf':
-              return 'templates/linux/stub.mprotect.asm'
+              return resolve(__dirname, '../../templates/linux/stub.mprotect.asm')
             case 'pe':
-              return 'templates/stub.asm'
+              return resolve(__dirname, '../../templates/stub.asm')
             case 'mach0':
-              return 'templates/osx/stub.mprotect.asm'
+              return resolve(__dirname, '../../templates/osx/stub.mprotect.asm')
             default:
               throw new Error(`BinType not supported: ${binary_info.info.bintype}`)
           }
           case 32:
             switch (binary_info.info.bintype) {
               case 'elf':
-                return 'templates/linux/stub.mprotect.x86.asm'
+                return resolve(__dirname, '../../templates/linux/stub.mprotect.x86.asm')
               case 'pe':
-                return 'templates/stub.x86.asm'
+                return resolve(__dirname, '../../templates/stub.x86.asm')
               case 'mach0':
-                return 'templates/osx/stub.mprotect.x86.asm'
+                return resolve(__dirname, '../../templates/osx/stub.mprotect.x86.asm')
               default:
                 throw new Error(`BinType not supported: ${binary_info.info.bintype}`)
             }
@@ -171,9 +172,9 @@ async function create_stub(
   }
 
   const instance = mustache.render(template, data)
-  fs.writeFileSync('generated/stub.asm', instance)
+  fs.writeFileSync(resolve(__dirname, '../../generated/stub.asm'), instance)
   await r2.cmd('s+ 128') // use far jmp
-  return (await r2.cmd('waF* generated/stub.asm')).split(' ')[1].trim().length / 2
+  return (await r2.cmd(`waF* ${resolve(__dirname, '../../generated/stub.asm')}`)).split(' ')[1].trim().length / 2
 }
 
 async function find_sections_xor(r2: R2Pipe, sections: string[], original_sections: Section[]): Promise<EnrichedSection[]> {
@@ -249,7 +250,7 @@ async function patch_code_cave(r2: R2Pipe, code_cave: CodeCave, stub_length: num
   console.log(await r2.cmd(`?E Writing stub`))
   console.log(await r2.cmd(`s ${code_cave.addr}`))
   console.log(`code cave:\n${await r2.cmd('pd 5')}`)
-  console.log(await r2.cmd(`waf generated/stub.asm`))
+  console.log(await r2.cmd(`waf ${resolve(__dirname, '../../generated/stub.asm')}`))
   if (stub_length > code_cave.length) {
     throw new Error(`The stub doesn't fit. Try to reduce section to encrypt.`)
   }
@@ -260,22 +261,22 @@ async function patch_code_cave(r2: R2Pipe, code_cave: CodeCave, stub_length: num
 
 async function add_section(r2: R2Pipe, file: string, section_name = '__shellcode'): Promise<void> {
   console.log(await r2.cmd(`?E Adding ${section_name} - ${file}`))
-  console.log(execFileSync('python3', ['scripts/add-section.py', file, section_name], { encoding: 'utf-8' }))
+  console.log(execFileSync('python3', [resolve(__dirname, '../../scripts/add-section.py'), file, section_name], { encoding: 'utf-8' }))
 }
 
 async function make_segment_rwx(r2: R2Pipe, file: string, segments = []): Promise<void> {
   console.log(await r2.cmd(`?E Making segments rwx: ${segments.join(' ') || 'all'} - ${file}`))
-  console.log(execFileSync('python3', ['scripts/make-segment-rwx.py', file, segments.join(' ')], { encoding: 'utf-8' }))
+  console.log(execFileSync('python3', [resolve(__dirname, '../../scripts/make-segment-rwx.py'), file, segments.join(' ')], { encoding: 'utf-8' }))
 }
 
 async function disable_pie(r2: R2Pipe, file: string): Promise<void> {
   console.log(await r2.cmd(`?E Disabling PIE - ${file}`))
-  console.log(execFileSync('python3', ['scripts/disable-pie.py', file], { encoding: 'utf-8' }))
+  console.log(execFileSync('python3', [resolve(__dirname, '../../scripts/disable-pie.py'), file], { encoding: 'utf-8' }))
 }
 
 async function update_entrypoint(r2: R2Pipe, file: string, addr: string): Promise<void> {
   console.log(await r2.cmd(`?E Updating entry point to ${addr} - ${file}`))
-  console.log(execFileSync('python3', ['scripts/change-entrypoint.py', file, addr], { encoding: 'utf-8' }))
+  console.log(execFileSync('python3', [resolve(__dirname, '../../scripts/change-entrypoint.py'), file, addr], { encoding: 'utf-8' }))
 }
 
 async function find_shellcode_section(r2: R2Pipe): Promise<CodeCave> {
