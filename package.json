@@ -13,6 +13,7 @@
     "/lib",
     "/scripts",
     "/templates",
+    "/generated",
     "/requirements.txt",
     "/npm-shrinkwrap.json",
     "/oclif.manifest.json"
