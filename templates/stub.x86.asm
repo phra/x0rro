@@ -21,11 +21,8 @@ _xor_loop{{{name}}}:
     cmp edi, ecx
     jl _xor_loop{{{name}}}
 {{/sections_xor}}
-_restore_original_instructions:
-    lea edi, [ebp + {{{entry_point}}}]
-    mov ecx, {{{entry_point_bytes}}}
-    mov [edi], ecx
 _restore_registers:
+    lea edi, [ebp + {{{entry_point}}}]
     pop ebp
     pop eax
     pop ebx

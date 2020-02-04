@@ -7,15 +7,12 @@ _save_registers:
     push rdx
     push rcx
     push rax
-{{#sections_mprotect}}
-_mprotect{{{name}}}:
+{{#sections_xor}}
     lea rdi, [{{{page_start}}}]
     mov rsi, {{{psize}}}
     mov rdx, 0x7 ; rwx
     mov rax, 10 ; mprotect linux
     syscall
-{{/sections_mprotect}}
-{{#sections_xor}}
     lea rdi, [{{{vaddr}}}]
     mov rcx, rdi
     add rcx, {{{vsize}}}
@@ -25,10 +22,6 @@ _xor_loop{{{name}}}:
     cmp rdi, rcx
     jl _xor_loop{{{name}}}
 {{/sections_xor}}
-_restore_original_instructions:
-    lea rdi, [{{{entry_point}}}]
-    mov rcx, {{{entry_point_bytes}}}
-    mov [rdi], rcx
 _restore_registers:
     pop rax
     pop rcx

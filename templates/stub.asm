@@ -14,10 +14,6 @@ _xor_loop{{{name}}}:
     cmp rdi, rcx
     jl _xor_loop{{{name}}}
 {{/sections_xor}}
-_restore_original_instructions:
-    lea rdi, [{{{entry_point}}}]
-    mov rcx, {{{entry_point_bytes}}}
-    mov [rdi], rcx
 _restore_registers:
     pop rcx
     pop rdi

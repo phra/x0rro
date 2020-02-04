@@ -14,16 +14,13 @@ _call_get_eip:
     call _get_eip:
 _get_eip:
     pop ebp
-{{#sections_mprotect}}
-_mprotect{{{name}}}:
+{{#sections_xor}}
     push 0x7 ; rwx
     push {{{psize}}}
     lea ebx, [ebp + {{{page_start}}}]
     push ebx
     mov eax, 0x7d ; mprotect osx
     int 0x80
-{{/sections_mprotect}}
-{{#sections_xor}}
     lea edi, [ebp + {{{vaddr}}}]
     mov ecx, edi
     add ecx, {{{vsize}}}
@@ -33,13 +30,10 @@ _xor_loop{{{name}}}:
     cmp edi, ecx
     jl _xor_loop{{{name}}}
 {{/sections_xor}}
-_restore_original_instructions:
-    lea edi, [ebp + {{{entry_point}}}]
-    mov ecx, {{{entry_point_bytes}}}
-    mov [edi], ecx
 _restore_registers:
     ;popfd
     ;popad
+    lea edi, [ebp + {{{entry_point}}}]
     pop ebp
     pop eax
     pop ebx

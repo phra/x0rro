@@ -158,18 +158,14 @@ async function create_stub(
   r2: R2Pipe,
   binary_info: BinaryInfo,
   sections_xor: Section[],
-  sections_mprotect: Section[],
   entry_point: string,
-  entry_point_bytes: string,
   opts: Options,
 ): Promise<number> {
   const template_name = get_template_name(binary_info, opts)
   const template = fs.readFileSync(template_name, { encoding: 'utf-8' })
   const data = {
     sections_xor,
-    sections_mprotect,
     entry_point,
-    entry_point_bytes,
     xor_key: opts.xor_key,
   }
 
@@ -321,26 +317,21 @@ export async function x0rro(file: string, opts: Options): Promise<void> {
     r2 = await R2Pipe.open(file, ['-w', '-e bin.strings=false'])
 
     const entry_point = await find_entry_point(r2)
-    const entry_point_bytes = await find_entry_point_bytes(r2, binary_info)
+    //const entry_point_bytes = await find_entry_point_bytes(r2, binary_info)
     const sections_xor = await find_sections_xor(r2, opts.sections, original_sections)
-    const sections_mprotect = await find_sections_mprotect(r2, opts.sections)
-    const stub_length = await create_stub(r2, binary_info, sections_xor, sections_mprotect, entry_point, entry_point_bytes, opts)
+    const stub_length = await create_stub(r2, binary_info, sections_xor, entry_point, opts)
     const code_cave = await (opts.technique === Techniques.CODE_CAVE ? find_code_cave(r2, sections_xor, stub_length) : find_shellcode_section(r2))
 
     if (binary_info.info.bits === 32) {
       const unmapped_section_xor = unmap_sections(sections_xor, code_cave)
-      const unmapped_section_mprotect = unmap_sections(sections_mprotect, code_cave)
       const unmapped_entry_point = unmap_entry_point(entry_point, code_cave)
-      await create_stub(r2, binary_info, unmapped_section_xor, unmapped_section_mprotect, unmapped_entry_point, entry_point_bytes, opts)
+      await create_stub(r2, binary_info, unmapped_section_xor, unmapped_entry_point, opts)
     }
 
     await xor_sections(r2, sections_xor, opts.xor_key)
-    await patch_entry_point(r2, entry_point, code_cave)
+    //await patch_entry_point(r2, entry_point, code_cave)
     await patch_code_cave(r2, code_cave, stub_length)
-    //if (binary_info.info.bits === 64 && (binary_info.info.bintype === 'elf' || binary_info.info.bintype === 'mach0')) {
-      update_entrypoint(r2, file, code_cave.addr)
-    //}
-
+    update_entrypoint(r2, file, code_cave.addr)
     //await disable_pie(r2, file)
     console.log(await r2.cmd(`?E Done! Check ${file}`))
     return r2.quit()
