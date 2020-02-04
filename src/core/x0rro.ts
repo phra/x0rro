@@ -193,10 +193,18 @@ async function find_sections_xor(r2: R2Pipe, sections: string[], original_sectio
   (await get_sections(r2))
     .filter(s => custom_sections.some(w => s.name.includes(w.split('[')[0])))
     .forEach(s => {
-      const section = custom_sections.find(w => s.name.includes(w.split('[')[0]))!
+      const section = custom_sections.find(w => s.name.includes(w.split('[')[0]))
+      if (!section) {
+        throw new Error(`cannot find section ${s.name}`)
+      }
+
       const section_name = section.split('[')[0]
-      const original_section = original_sections.find(s => s.name.includes(section_name))!
-      const current_section = current_sections.find(s => s.name.includes(section_name))!
+      const original_section = original_sections.find(s => s.name.includes(section_name))
+      const current_section = current_sections.find(s => s.name.includes(section_name))
+      if (!original_section || ! current_section) {
+        throw new Error(`cannot find section ${section_name}`)
+      }
+
       const offset = current_section.vaddr - original_section.vaddr
       const ranges = section.split('[')[1].split(']')[0].split(',')
       ranges.forEach((range, i) => {

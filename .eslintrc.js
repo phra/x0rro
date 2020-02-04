@@ -12,5 +12,7 @@ module.exports = {
     rules: {
       '@typescript-eslint/camelcase': 'off',
       '@typescript-eslint/member-delimiter-style': 'off',
+      '@typescript-eslint/no-empty-interface': 'off',
+      'no-empty': 'off',
     },
 }

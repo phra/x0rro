@@ -27,7 +27,7 @@ export default class Interactive extends Command {
 
   async run(): Promise<void> {
     print_banner()
-    const { args, flags } = this.parse(Interactive)
+    const { args } = this.parse(Interactive)
     ensure_file_exists(args.file)
     const r2 = await R2Pipe.open(args.file)
     const sections = await r2.cmdj('iSj') as Section[]
@@ -39,7 +39,7 @@ export default class Interactive extends Command {
         message: 'provide a custom xor_key in hex format [default: 0xf]',
         type: 'input',
         default: '0xf',
-        validate: x => x[0] === '0' && x[1] === 'x' && (x.length === 3 || x.length === 4),
+        validate: (x: string): boolean => x[0] === '0' && x[1] === 'x' && (x.length === 3 || x.length === 4),
       }, {
         name: 'technique',
         message: 'choose a technique to use [default: add section]',

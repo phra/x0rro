@@ -1,9 +1,11 @@
 export interface BinaryInfo {
   info:    Info
-  imports: any[]
+  imports: Import[]
   entries: Entry[]
   exports: Export[]
 }
+
+export interface Import { }
 
 export interface Entry {
   vaddr:  number
