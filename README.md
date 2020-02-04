@@ -20,7 +20,7 @@ $ npm install -g x0rro
 $ x0rro COMMAND
 running command...
 $ x0rro (-v|--version|version)
-x0rro/1.0.1 linux-x64 node-v13.7.0
+x0rro/1.0.2 linux-x64 node-v13.7.0
 $ x0rro --help [COMMAND]
 USAGE
   $ x0rro COMMAND
@@ -52,7 +52,7 @@ EXAMPLES
   $ x0rro cave -x 0xf -s aogf[0x140004000-0x140004290] test.exe
 ```
 
-_See code: [src/commands/cave.ts](https://github.com/phra/x0rro/blob/v1.0.1/src/commands/cave.ts)_
+_See code: [src/commands/cave.ts](https://github.com/phra/x0rro/blob/v1.0.2/src/commands/cave.ts)_
 
 ## `x0rro help [COMMAND]`
 
@@ -86,7 +86,7 @@ EXAMPLE
   $ x0rro interactive myfile
 ```
 
-_See code: [src/commands/interactive.ts](https://github.com/phra/x0rro/blob/v1.0.1/src/commands/interactive.ts)_
+_See code: [src/commands/interactive.ts](https://github.com/phra/x0rro/blob/v1.0.2/src/commands/interactive.ts)_
 
 ## `x0rro section FILE`
 
@@ -106,5 +106,5 @@ EXAMPLES
   $ x0rro section -x 0xf -s aogf[0x140004000-0x140004290] test.exe
 ```
 
-_See code: [src/commands/section.ts](https://github.com/phra/x0rro/blob/v1.0.1/src/commands/section.ts)_
+_See code: [src/commands/section.ts](https://github.com/phra/x0rro/blob/v1.0.2/src/commands/section.ts)_
 <!-- commandsstop -->
