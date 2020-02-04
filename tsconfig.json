@@ -11,6 +11,9 @@
     "noImplicitAny": true,
     "declaration": true,
     "importHelpers": true,
-    "resolveJsonModule": true
-  }
+    "resolveJsonModule": true,
+  },
+  "exclude": [
+    "tests"
+  ]
 }
