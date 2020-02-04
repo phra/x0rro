@@ -114,8 +114,8 @@ async function xor_sections(r2: R2Pipe, sections: Section[], key: number): Promi
     console.log(await r2.cmd(`px 32`))
     const values = await r2.cmdj(`pxj ${s.vsize}`) as number[]
     const new_values = values.map(value => (value ^ key).toString(16).padStart(2, '0')).join('')
-    fs.writeFileSync(resolve(__dirname, '../../generated/xored'), new_values)
-    await r2.cmd(`wxf ${resolve(__dirname, '../../generated/xored')}`)
+    fs.writeFileSync(resolve('/tmp/xored'), new_values)
+    await r2.cmd(`wxf ${resolve('/tmp/xored')}`)
     console.log('after xor:')
     await r2.cmd(`s ${s.vaddr}`)
     console.log(await r2.cmd(`px 32`))
@@ -172,9 +172,9 @@ async function create_stub(
   }
 
   const instance = mustache.render(template, data)
-  fs.writeFileSync(resolve(__dirname, '../../generated/stub.asm'), instance)
+  fs.writeFileSync(resolve('/tmp/stub.asm'), instance)
   await r2.cmd('s+ 128') // use far jmp
-  return (await r2.cmd(`waF* ${resolve(__dirname, '../../generated/stub.asm')}`)).split(' ')[1].trim().length / 2
+  return (await r2.cmd(`waF* ${resolve('/tmp/stub.asm')}`)).split(' ')[1].trim().length / 2
 }
 
 async function find_sections_xor(r2: R2Pipe, sections: string[], original_sections: Section[]): Promise<EnrichedSection[]> {
@@ -250,7 +250,7 @@ async function patch_code_cave(r2: R2Pipe, code_cave: CodeCave, stub_length: num
   console.log(await r2.cmd(`?E Writing stub`))
   console.log(await r2.cmd(`s ${code_cave.addr}`))
   console.log(`code cave:\n${await r2.cmd('pd 5')}`)
-  console.log(await r2.cmd(`waf ${resolve(__dirname, '../../generated/stub.asm')}`))
+  console.log(await r2.cmd(`waf ${resolve('/tmp/stub.asm')}`))
   if (stub_length > code_cave.length) {
     throw new Error(`The stub doesn't fit. Try to reduce section to encrypt.`)
   }
