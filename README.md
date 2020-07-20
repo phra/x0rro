@@ -1,7 +1,7 @@
 x0rro
 =====
 
-
+Read the blog post @ [https://iwantmore.pizza/posts/x0rro.html](https://iwantmore.pizza/posts/x0rro.html)
 
 [![oclif](https://img.shields.io/badge/cli-oclif-brightgreen.svg)](https://oclif.io)
 [![Version](https://img.shields.io/npm/v/x0rro.svg)](https://npmjs.org/package/x0rro)
